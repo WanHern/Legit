@@ -1,0 +1,306 @@
+#!/bin/dash
+
+# Check if .legit directory exists
+if [ ! -d ".legit" ]
+then
+    echo "$0: error: no .legit directory containing legit repository exists" >&2
+    exit 1
+fi
+
+# Check if there are existing commits
+files=$(ls -a .legit)
+found=0
+for f in $files
+do
+    if echo "$f" | egrep -q "^\.commit"
+    then
+        found=1
+    fi
+done
+if [ "$found" -eq 0 ]
+then
+    echo "$0: error: your repository does not have any commits yet"
+    exit 1
+fi
+
+# Check usage
+if [ $# -eq 0 ]
+then
+    echo "usage: $0" >&2
+    exit 1
+fi
+
+# Check status first
+# Get names of all files
+# And store in tmp directory
+mkdir .legit/.tmp
+touch .legit/.tmp.txt
+
+# 1. Files from working directory
+for f in *
+do
+    touch .legit/.tmp/"$f"
+done
+
+# 2. Files from index
+files=$(ls .legit/.index)
+for f in $files
+do
+    touch .legit/.tmp/"$f"
+done
+
+# 3. Files from latest commit
+top=$(head -1 .legit/.log/.commits.txt | egrep -o "^[0-9]*")
+if [ ! -z "$top" ]
+then
+    files=$(ls .legit/.commit$top)
+    for f in $files
+    do
+        touch .legit/.tmp/"$f"
+    done
+fi
+
+# Find difference between files in each directory and print status
+files=$(ls .legit/.tmp)
+for f in $files
+do
+    work="none"
+    index="none"
+    commit="none"
+    # Get file from working directory
+    for file in *
+    do
+        if echo "$f" | egrep -q "^$file$"
+        then
+            work=$file
+        fi
+    done
+    # Get file from index
+    files=$(ls .legit/.index)
+    for file in $files
+    do
+        if echo "$f" | egrep -q "^$file$"
+        then
+            index=$file
+        fi
+    done
+    # Get file from commit
+    if [ ! -z "$top" ]
+    then
+        files=$(ls .legit/.commit$top)
+        for file in $files
+        do
+            if echo "$f" | egrep -q "^$file$"
+            then
+                commit=$file
+            fi
+        done
+    fi
+    # If file only in working directory
+    if [ ! $work = "none" ] && [ $index = "none" ] && [ $commit = "none" ]
+    then
+        echo "$work - untracked"
+    # If file only in working directory and index
+    elif [ ! $index = "none" ] && [ $commit = "none" ]
+    then
+        echo "$index - added to index"
+    # If file only in index and commit
+    elif [ $work = "none" ] && [ ! $index = "none" ] && [ ! $commit = "none" ]
+    then
+        echo "$commit - file deleted"
+    # If file only in commit
+    elif [ $work = "none" ] && [ $index = "none" ] && [ ! $commit = "none" ]
+    then
+        echo "$commit - deleted"
+    # If file in all 3 locations, check difference
+    elif [ ! $work = "none" ] && [ ! $index = "none" ] && [ ! $commit = "none" ]
+    then
+        # If work(D)index(D)commit
+        if ! diff $work .legit/.index/$work > /dev/null && ! diff .legit/.index/$work .legit/.commit$top/$work > /dev/null
+        then
+            echo "$work - file changed, different changes staged for commit"
+        elif diff $work .legit/.index/$work > /dev/null && ! diff .legit/.index/$work .legit/.commit$top/$work > /dev/null
+        then
+            echo "$work - file changed, changes staged for commit"
+        elif ! diff $work .legit/.index/$work > /dev/null && diff .legit/.index/$work .legit/.commit$top/$work > /dev/null
+        then
+            echo "$work - file changed, changes not staged for commit"
+        else
+            echo "$work - same as repo"
+        fi
+    else
+        echo "$work - untracked"
+    fi
+
+done > .legit/.tmp.txt
+
+# Conditions based on flags
+if [ ! -z "$1" ] && [ "$1" = "--force" ]
+then
+	# --force files
+	if [ ! -z "$2" ] && [ ! "$2" = "--cached" ]
+	then
+		for arg in "$@"
+		do
+			if [ ! "$arg" = "$1" ]
+			then
+				# Get file status
+				line=$(egrep "^$arg - " .legit/.tmp.txt | sed 's/.* - //')
+				# Warning: Deleted / untracked
+				if [ "$line" = "deleted" ] || [ "$line" = "untracked" ]
+				then
+					echo "$0: error: '$arg' is not in the legit repository"
+					rm -r .legit/.tmp
+					rm .legit/.tmp.txt
+					exit 1
+				fi
+				# Able to remove
+				# Remove file from working directory
+				for f in *
+				do
+					if [ "$arg" = "$f" ]
+					then
+						rm $arg
+					fi
+				done
+				# Remove file from index
+				files=$(ls .legit/.index)
+				for f in $files
+				do
+					if [ "$arg" = "$f" ]
+					then
+						rm .legit/.index/$arg
+					fi
+				done
+			fi
+		done
+	# --force --cached files
+	elif [ ! -z "$2" ] && [ "$2" = "--cached" ]
+	then
+		for arg in "$@"
+		do
+			if [ ! "$arg" = "$1" ] && [ ! "$arg" = "$2" ]
+			then
+				# Get file status
+				line=$(egrep "^$arg - " .legit/.tmp.txt | sed 's/.* - //')
+				# Warning: Deleted / untracked
+				if [ "$line" = "deleted" ] || [ "$line" = "untracked" ]
+				then
+					echo "$0: error: '$arg' is not in the legit repository"
+					rm -r .legit/.tmp
+					rm .legit/.tmp.txt
+					exit 1
+				fi
+				# Able to remove
+				# Remove file from index
+				files=$(ls .legit/.index)
+				for f in $files
+				do
+					if [ "$arg" = "$f" ]
+					then
+						rm .legit/.index/$arg
+					fi
+				done
+			fi
+		done
+	fi
+# --cached files
+elif [ ! -z "$1" ] && [ "$1" = "--cached" ]
+then 
+	for arg in "$@"
+	do
+		if [ ! "$arg" = "$1" ]
+		then
+			# Get file status
+			line=$(egrep "^$arg - " .legit/.tmp.txt | sed 's/.* - //')
+			# Warning: File changed, different changes staged for commit
+			if [ "$line" = "file changed, different changes staged for commit" ]
+			then
+				echo "$0: error: '$arg' in index is different to both working file and repository"
+				rm -r .legit/.tmp
+				rm .legit/.tmp.txt
+				exit 1
+			# Warning: Deleted / untracked
+			elif [ "$line" = "deleted" ] || [ "$line" = "untracked" ]
+			then
+				echo "$0: error: '$arg' is not in the legit repository"
+				rm -r .legit/.tmp
+				rm .legit/.tmp.txt
+				exit 1
+			# Able to remove
+			else
+				# Remove file from index
+				files=$(ls .legit/.index)
+				for f in $files
+				do
+					if [ "$arg" = "$f" ]
+					then
+						rm .legit/.index/$arg
+					fi
+				done
+			fi
+		fi
+	done
+# files
+elif [ ! -z "$1" ] && [ ! "$1" = "--force" ] && [ ! "$1" = "--cached" ]
+then
+	for arg in "$@"
+	do
+		# Get file status
+		line=$(egrep "^$arg - " .legit/.tmp.txt | sed 's/.* - //')
+		# Warning: File changed, different changes staged for commit
+		if [ "$line" = "file changed, different changes staged for commit" ]
+		then
+			echo "$0: error: '$arg' in index is different to both working file and repository"
+			rm -r .legit/.tmp
+			rm .legit/.tmp.txt
+			exit 1
+		# Warning: Deleted / untracked
+		elif [ "$line" = "deleted" ] || [ "$line" = "untracked" ]
+		then
+			echo "$0: error: '$arg' is not in the legit repository"
+			rm -r .legit/.tmp
+			rm .legit/.tmp.txt
+			exit 1
+		# Warning: File changed, changes staged for commit / Added to index
+		elif [ "$line" = "file changed, changes staged for commit" ] || [ "$line" = "added to index" ]
+		then
+			echo "$0: error: '$arg' has changes staged in the index"
+			rm -r .legit/.tmp
+			rm .legit/.tmp.txt
+			exit 1
+		# Warning: File changed, changes not staged for commit
+		elif [ "$line" = "file changed, changes not staged for commit" ]
+		then
+			echo "$0: error: '$arg' in repository is different to working file"
+			rm -r .legit/.tmp
+			rm .legit/.tmp.txt
+			exit 1
+		# Able to remove
+		else
+			# Remove file from working directory
+			for f in *
+			do
+				if [ "$arg" = "$f" ]
+				then
+					rm $arg
+				fi
+			done
+			# Remove file from index
+			files=$(ls .legit/.index)
+			for f in $files
+			do
+				if [ "$arg" = "$f" ]
+				then
+					rm .legit/.index/$arg
+				fi
+			done
+		fi
+	done
+fi
+
+# Remove the tmp directory and file
+rm -r .legit/.tmp
+rm .legit/.tmp.txt
+
+

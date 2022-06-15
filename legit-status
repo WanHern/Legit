@@ -1,0 +1,119 @@
+#!/bin/dash
+
+# Check if .legit directory exists
+if [ ! -d ".legit" ]
+then
+    echo "$0: error: no .legit directory containing legit repository exists" >&2
+    exit 1
+fi
+
+# Check usage
+if [ $# -gt 0 ]
+then
+    echo "usage: $0" >&2
+    exit 1
+fi
+
+# Get names of all files
+# And store in tmp directory
+mkdir .legit/.tmp
+
+# 1. Files from working directory
+files=$(ls)
+for f in $files
+do
+    touch .legit/.tmp/"$f"
+done
+
+# 2. Files from index
+files=$(ls .legit/.index)
+for f in $files
+do
+    touch .legit/.tmp/"$f"
+done
+
+# 3. Files from latest commit
+top=$(head -1 .legit/.log/.commits.txt | egrep -o "^[0-9]*")
+if [ ! -z "$top" ]
+then
+    files=$(ls .legit/.commit$top)
+    for f in $files
+    do
+        touch .legit/.tmp/"$f"
+    done
+fi
+
+# Find difference between files in each directory and print status
+files=$(ls .legit/.tmp)
+for f in $files
+do
+    work="none"
+    index="none"
+    commit="none"
+    # Get file from working directory
+    wfiles=$(ls)
+    for file in $wfiles
+    do
+        if echo "$f" | egrep -q "^$file$"
+        then
+            work=$file
+        fi
+    done
+    # Get file from index
+    ifiles=$(ls .legit/.index)
+    for file in $ifiles
+    do
+        if echo "$f" | egrep -q "^$file$"
+        then
+            index=$file
+        fi
+    done
+    # Get file from commit
+    if [ ! -z "$top" ]
+    then
+        cfiles=$(ls .legit/.commit$top)
+        for file in $cfiles
+        do
+            if echo "$f" | egrep -q "^$file$"
+            then
+                commit=$file
+            fi
+        done
+    fi
+    # If file only in working directory and/or commit
+    if [ ! "$work" = "none" ] && [ "$index" = "none" ]
+    then
+        echo "$work - untracked"
+    # If file only in index and/or in working directory
+    elif [ ! "$index" = "none" ] && [ "$commit" = "none" ]
+    then
+        echo "$index - added to index"
+    # If file only in index and commit
+    elif [ "$work" = "none" ] && [ ! "$index" = "none" ] && [ ! "$commit" = "none" ]
+    then
+        echo "$commit - file deleted"
+    # If file only in commit
+    elif [ "$work" = "none" ] && [ "$index" = "none" ] && [ ! "$commit" = "none" ]
+    then
+        echo "$commit - deleted"
+    # If file in all 3 locations, check difference
+    elif [ ! "$work" = "none" ] && [ ! "$index" = "none" ] && [ ! "$commit" = "none" ]
+    then
+        # If work(D)index(D)commit
+        if ! diff $work .legit/.index/$work > /dev/null && ! diff .legit/.index/$work .legit/.commit$top/$work > /dev/null
+        then
+            echo "$work - file changed, different changes staged for commit"
+        elif diff $work .legit/.index/$work > /dev/null && ! diff .legit/.index/$work .legit/.commit$top/$work > /dev/null
+        then
+            echo "$work - file changed, changes staged for commit"
+        elif ! diff $work .legit/.index/$work > /dev/null && diff .legit/.index/$work .legit/.commit$top/$work > /dev/null
+        then
+            echo "$work - file changed, changes not staged for commit"
+        else
+            echo "$work - same as repo"
+        fi
+    fi
+done
+
+# Remove tmp directory
+rm -r .legit/.tmp

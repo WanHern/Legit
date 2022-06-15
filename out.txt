@@ -1,0 +1,405 @@
+
+Test subset1_9 (commit -a) - passed
+Test subset1_10 (add + commit -a) - passed
+Test subset1_11 (rm) - failed (Incorrect output)
+Your program produced these 18 lines of output:
+$ legit-init
+Initialized empty legit repository in .legit
+$ echo 1 >a
+$ echo 2 >b
+$ legit-add a b
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ echo 3 >c
+$ echo 4 >d
+$ legit-add c d
+$ legit-rm --cached  a c
+$ legit-commit -m "second commit"
+Committed as commit 1
+$ legit-show 0:a
+1
+$ legit-show 1:a
+1
+*** TEST STOPPED: incorrect output from legit command
+
+The correct 19 lines of output for this test were:
+$ legit-init
+Initialized empty legit repository in .legit
+$ echo 1 >a
+$ echo 2 >b
+$ legit-add a b
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ echo 3 >c
+$ echo 4 >d
+$ legit-add c d
+$ legit-rm --cached  a c
+$ legit-commit -m "second commit"
+Committed as commit 1
+$ legit-show 0:a
+1
+$ legit-show 1:a
+legit-show: error: 'a' not found in commit 1
+$ legit-show :a
+legit-show: error: 'a' not found in index
+
+The difference between your output(-) and the correct output(+) is:
+...
+  $ legit-show 1:a
+- 1
+- *** TEST STOPPED: incorrect output from legit command
++ legit-show: error: 'a' not found in commit 1
++ $ legit-show :a
++ legit-show: error: 'a' not found in index
+Test subset1_12 (rm) - failed (Incorrect output - same as Test subset1_11)
+Test subset1_13 (rm add) - failed (Incorrect output)
+Your program produced these 16 lines of output:
+$ legit-init
+Initialized empty legit repository in .legit
+$ touch a b
+$ legit-add a b
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ rm a
+$ legit-commit -m "second commit"
+nothing to commit
+$ legit-add a
+$ legit-commit -m "second commit"
+Committed as commit 1
+$ legit-rm --cached b
+$ legit-commit -m "second commit"
+nothing to commit
+*** TEST STOPPED: incorrect output from legit command
+
+The correct 25 lines of output for this test were:
+$ legit-init
+Initialized empty legit repository in .legit
+$ touch a b
+$ legit-add a b
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ rm a
+$ legit-commit -m "second commit"
+nothing to commit
+$ legit-add a
+$ legit-commit -m "second commit"
+Committed as commit 1
+$ legit-rm --cached b
+$ legit-commit -m "second commit"
+Committed as commit 2
+$ legit-rm b
+legit-rm: error: 'b' is not in the legit repository
+$ legit-add b
+$ legit-rm b
+legit-rm: error: 'b' has changes staged in the index
+$ legit-commit -m "third commit"
+Committed as commit 3
+$ legit-rm b
+$ legit-commit -m "fourth commit"
+Committed as commit 4
+
+The difference between your output(-) and the correct output(+) is:
+...
+  $ legit-commit -m "second commit"
+- nothing to commit
+- *** TEST STOPPED: incorrect output from legit command
++ Committed as commit 2
++ $ legit-rm b
++ legit-rm: error: 'b' is not in the legit repository
++ $ legit-add b
++ $ legit-rm b
++ legit-rm: error: 'b' has changes staged in the index
++ $ legit-commit -m "third commit"
++ Committed as commit 3
++ $ legit-rm b
++ $ legit-commit -m "fourth commit"
++ Committed as commit 4
+Test subset1_14 (rm errors) - failed (Incorrect output)
+Your program produced these 17 lines of output:
+$ legit-init
+Initialized empty legit repository in .legit
+$ echo 1 >a
+$ echo 2 >b
+$ echo 3 >c
+$ legit-add a b c
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ echo 4 >>a
+$ echo 5 >>b
+$ echo 6 >>c
+$ echo 7 >d
+$ echo 8 >e
+$ legit-add b c d
+$ echo 9 >b
+$ legit-rm a
+*** TEST STOPPED: no output from legit command
+
+The correct 41 lines of output for this test were:
+$ legit-init
+Initialized empty legit repository in .legit
+$ echo 1 >a
+$ echo 2 >b
+$ echo 3 >c
+$ legit-add a b c
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ echo 4 >>a
+$ echo 5 >>b
+$ echo 6 >>c
+$ echo 7 >d
+$ echo 8 >e
+$ legit-add b c d
+$ echo 9 >b
+$ legit-rm a
+legit-rm: error: 'a' in repository is different to working file
+$ legit-rm b
+legit-rm: error: 'b' in index is different to both working file and repository
+$ legit-rm c
+legit-rm: error: 'c' has changes staged in the index
+$ legit-rm d
+legit-rm: error: 'd' has changes staged in the index
+$ legit-rm e
+legit-rm: error: 'e' is not in the legit repository
+$ legit-rm --cached a
+$ legit-rm --cached b
+legit-rm: error: 'b' in index is different to both working file and repository
+$ legit-rm --cached c
+$ legit-rm --cached d
+$ legit-rm --cached e
+legit-rm: error: 'e' is not in the legit repository
+$ legit-rm --force a
+legit-rm: error: 'a' is not in the legit repository
+$ legit-rm --force b
+$ legit-rm --force c
+legit-rm: error: 'c' is not in the legit repository
+$ legit-rm --force d
+legit-rm: error: 'd' is not in the legit repository
+$ legit-rm --force e
+legit-rm: error: 'e' is not in the legit repository
+
+The difference between your output(-) and the correct output(+) is:
+...
+  $ legit-rm a
+- *** TEST STOPPED: no output from legit command
++ legit-rm: error: 'a' in repository is different to working file
++ $ legit-rm b
++ legit-rm: error: 'b' in index is different to both working file and repository
++ $ legit-rm c
++ legit-rm: error: 'c' has changes staged in the index
++ $ legit-rm d
++ legit-rm: error: 'd' has changes staged in the index
++ $ legit-rm e
++ legit-rm: error: 'e' is not in the legit repository
++ $ legit-rm --cached a
++ $ legit-rm --cached b
++ legit-rm: error: 'b' in index is different to both working file and repository
++ $ legit-rm --cached c
++ $ legit-rm --cached d
++ $ legit-rm --cached e
++ legit-rm: error: 'e' is not in the legit repository
++ $ legit-rm --force a
++ legit-rm: error: 'a' is not in the legit repository
++ $ legit-rm --force b
++ $ legit-rm --force c
++ legit-rm: error: 'c' is not in the legit repository
++ $ legit-rm --force d
++ legit-rm: error: 'd' is not in the legit repository
++ $ legit-rm --force e
++ legit-rm: error: 'e' is not in the legit repository
+Test subset1_15 (rm options) - failed (Incorrect output)
+Your program produced these 21 lines of output:
+$ legit-init
+Initialized empty legit repository in .legit
+$ echo 1 >a
+$ echo 2 >b
+$ echo 3 >c
+$ legit-add a b c
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ echo 4 >>a
+$ echo 5 >>b
+$ echo 6 >>c
+$ echo 7 >d
+$ echo 8 >e
+$ legit-add b c d e
+$ echo 9 >b
+$ echo 0 >d
+$ legit-rm --cached a c
+$ legit-rm --force --cached b
+$ legit-rm --force --cached e
+$ legit-rm --force d
+*** TEST STOPPED - UNEXPECTED FILES: these files were present and should not have been: d
+
+The correct 25 lines of output for this test were:
+$ legit-init
+Initialized empty legit repository in .legit
+$ echo 1 >a
+$ echo 2 >b
+$ echo 3 >c
+$ legit-add a b c
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ echo 4 >>a
+$ echo 5 >>b
+$ echo 6 >>c
+$ echo 7 >d
+$ echo 8 >e
+$ legit-add b c d e
+$ echo 9 >b
+$ echo 0 >d
+$ legit-rm --cached a c
+$ legit-rm --force --cached b
+$ legit-rm --force --cached e
+$ legit-rm --force d
+$ legit-status
+a - untracked
+b - untracked
+c - untracked
+e - untracked
+
+The difference between your output(-) and the correct output(+) is:
+...
+  $ legit-rm --force d
+- *** TEST STOPPED - UNEXPECTED FILES: these files were present and should not have been: d
++ $ legit-status
++ a - untracked
++ b - untracked
++ c - untracked
++ e - untracked
+Test subset1_16 (status) - failed (Incorrect output)
+Your program produced these 14 lines of output:
+$ legit-init
+Initialized empty legit repository in .legit
+$ touch a b c d e f g h
+$ legit-add a b c d e f
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ echo hello >a
+$ echo hello >b
+$ echo hello >c
+$ legit-add a b
+$ echo world >a
+$ rm d
+$ legit-rm e
+*** TEST STOPPED - UNEXPECTED FILES: these files were present and should not have been: e
+
+The correct 23 lines of output for this test were:
+$ legit-init
+Initialized empty legit repository in .legit
+$ touch a b c d e f g h
+$ legit-add a b c d e f
+$ legit-commit -m "first commit"
+Committed as commit 0
+$ echo hello >a
+$ echo hello >b
+$ echo hello >c
+$ legit-add a b
+$ echo world >a
+$ rm d
+$ legit-rm e
+$ legit-add g
+$ legit-status
+a - file changed, different changes staged for commit
+b - file changed, changes staged for commit
+c - file changed, changes not staged for commit
+d - file deleted
+e - deleted
+f - same as repo
+g - added to index
+h - untracked
+
+The difference between your output(-) and the correct output(+) is:
+...
+  $ legit-rm e
+- *** TEST STOPPED - UNEXPECTED FILES: these files were present and should not have been: e
++ $ legit-add g
++ $ legit-status
++ a - file changed, different changes staged for commit
++ b - file changed, changes staged for commit
++ c - file changed, changes not staged for commit
++ d - file deleted
++ e - deleted
++ f - same as repo
++ g - added to index
++ h - untracked
+Test subset1_18 (rm add rm show) - failed (Incorrect output)
+Your program produced these 8 lines of output:
+$ legit-init
+Initialized empty legit repository in .legit
+$ echo hello >a
+$ legit-add a
+$ legit-commit -m commit-0
+Committed as commit 0
+$ legit-rm a
+*** TEST STOPPED - UNEXPECTED FILES: these files were present and should not have been: a
+
+The correct 35 lines of output for this test were:
+$ legit-init
+Initialized empty legit repository in .legit
+$ echo hello >a
+$ legit-add a
+$ legit-commit -m commit-0
+Committed as commit 0
+$ legit-rm a
+$ legit-status
+a - deleted
+$ legit-commit -m commit-1
+Committed as commit 1
+$ legit-status
+$ echo world >a
+$ legit-status
+a - untracked
+$ legit-commit -m commit-2
+nothing to commit
+$ legit-add a
+$ legit-commit -m commit-2
+Committed as commit 2
+$ legit-rm a
+$ legit-commit -m commit-3
+Committed as commit 3
+$ legit-show :a
+legit-show: error: 'a' not found in index
+$ legit-show 0:a
+hello
+$ legit-show 1:a
+legit-show: error: 'a' not found in commit 1
+$ legit-show 2:a
+world
+$ legit-show 3:a
+legit-show: error: 'a' not found in commit 3
+$ legit-show 4:a
+legit-show: error: unknown commit '4'
+
+The difference between your output(-) and the correct output(+) is:
+...
+  $ legit-rm a
+- *** TEST STOPPED - UNEXPECTED FILES: these files were present and should not have been: a
++ $ legit-status
++ a - deleted
++ $ legit-commit -m commit-1
++ Committed as commit 1
++ $ legit-status
++ $ echo world >a
++ $ legit-status
++ a - untracked
++ $ legit-commit -m commit-2
++ nothing to commit
++ $ legit-add a
++ $ legit-commit -m commit-2
++ Committed as commit 2
++ $ legit-rm a
++ $ legit-commit -m commit-3
++ Committed as commit 3
++ $ legit-show :a
++ legit-show: error: 'a' not found in index
++ $ legit-show 0:a
++ hello
++ $ legit-show 1:a
++ legit-show: error: 'a' not found in commit 1
++ $ legit-show 2:a
++ world
++ $ legit-show 3:a
++ legit-show: error: 'a' not found in commit 3
++ $ legit-show 4:a
++ legit-show: error: unknown commit '4'
+2 tests passed 7 tests failed

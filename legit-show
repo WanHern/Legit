@@ -1,0 +1,95 @@
+#!/bin/dash
+
+# Check if .legit directory exists
+if [ ! -d ".legit" ]
+then
+    echo "$0: error: no .legit directory containing legit repository exists" >&2
+    exit 1
+fi
+
+# Check usage
+if [ ! $# -eq 1 ]
+then
+    echo "usage: $0 <commit>:<filename>" >&2
+    exit 1
+else
+    # Check if ':' present
+    if ! echo "$1" | egrep -q ":"
+    then
+        echo "$0: error: invalid object $1" >&2
+        exit 1
+    fi
+    # Valid commit number check
+    commitNum=$(echo $1 | cut -d':' -f1)
+    if [ ! -z "$commitNum" ]
+    then
+        files=$(ls -a .legit/.*)
+        found=0
+        for f in $files
+        do
+            if [ "$f" = ".commit$commitNum" ]
+            then
+                found=1
+            fi
+        done
+        if [ "$found" -eq 0 ]
+        then
+            echo "$0: error: unknown commit '$commitNum'" >&2
+            exit 1
+        fi
+    fi
+    # Valid file check
+    fileName=$(echo $1 | sed 's/[^:]*://')
+    found=0
+    if [ -z "$fileName" ]
+    then
+        if [ -z "$commitNum" ]
+        then
+            echo "$0: error: '' not found in index" >&2
+            exit 1
+        else
+            echo "$0: error: '' not found in commit $commitNum" >&2
+            exit 1
+        fi
+    else
+        if [ -z "$commitNum" ]
+        then
+            files=$(ls .legit/.index)
+        else
+            files=$(ls .legit/.commit$commitNum)
+        fi
+        for f in $files
+        do
+            if [ "$f" = "$fileName" ]
+            then
+                found=1
+                break
+            fi
+        done
+        if [ "$found" -eq 0 ]
+        then
+            if [ -z "$commitNum" ]
+            then
+                echo "$0: error: '$fileName' not found in index" >&2
+                exit 1
+            else
+                echo "$0: error: '$fileName' not found in commit $commitNum" >&2
+                exit 1
+            fi
+        fi
+    fi
+fi
+
+# Show contents of specified file
+if [ $# -eq 1 ]
+then
+    file=$(echo $1 | cut -d':' -f2)
+    commitNum=$(echo $1 | cut -d':' -f1)
+    if [ -z "$commitNum" ]
+    then
+        cat .legit/.index/$file
+    else
+        cat .legit/.commit$commitNum/$file
+    fi
+fi
+

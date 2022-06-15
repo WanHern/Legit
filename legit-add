@@ -1,0 +1,41 @@
+#!/bin/dash
+
+# Check if .legit directory exists
+if [ ! -d ".legit" ]
+then
+    echo "$0: error: no .legit directory containing legit repository exists" >&2
+    exit 1
+fi
+
+# Check usage
+if [ $# -eq 0 ]
+then
+    echo "usage: $0 <filenames>" >&2
+    exit 1
+fi
+
+# Update index
+for f in $@
+do
+    # If file does not exist in working directory
+    if [ ! -f "$f" ]
+    then
+    	# If the file does not exist in index
+    	if [ ! -f ".legit/.index/$f" ]
+    	then
+        	echo "$0: error: can not open '$f'" >&2
+        	exit 1
+        # If the file exists in the index
+        else
+        	rm .legit/.index/$f
+        	exit
+        fi
+    fi
+    # If file exists in working directory, copy into index
+    if echo "$f" | egrep -q "^[a-zA-Z0-9]([a-zA-Z0-9]*\.*-*_*)*$"
+    then
+        cp "$f" .legit/.index/"$f"
+    fi
+done
+
+

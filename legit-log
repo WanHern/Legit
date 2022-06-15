@@ -1,0 +1,19 @@
+#!/bin/dash
+
+# Check if .legit directory exists
+if [ ! -d ".legit" ]
+then
+    echo "$0: error: no .legit directory containing legit repository exists" >&2
+    exit 1
+fi
+
+# Check usage
+if [ $# -gt 0 ]
+then
+    echo "usage: $0" >&2
+    exit 1
+fi
+
+# Display commit log
+cat .legit/.log/.commits.txt
+

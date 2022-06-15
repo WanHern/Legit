@@ -1,0 +1,19 @@
+#!/bin/dash
+
+rm -r .legit
+./legit-init
+
+rm a b c d e f g h
+
+touch a b c d e f g h
+./legit-add a b c d e f
+./legit-commit -m 'first commit'
+echo hello >a
+echo hello >b
+echo hello >c
+./legit-add a b
+echo world >a
+rm d
+./legit-rm e
+./legit-add g
+./legit-status

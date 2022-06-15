@@ -1,0 +1,85 @@
+#!/bin/dash
+
+# Check if .legit directory exists
+if [ ! -d ".legit" ]
+then
+    echo "$0: error: no .legit directory containing legit repository exists" >&2
+    exit 1
+fi
+
+# Check usage
+# A usage error will be given if:
+
+# num of args < 2 OR num of args > 3
+if [ $# -lt 2 ] || [ $# -gt 3 ] ||
+
+# num of args = 2 AND (arg1 != -m OR arg2 starts with '-')
+([ $# -eq 2 ] && ([ ! "$1" = "-m" ] || echo "$2" | egrep -q "^-.*" )) ||
+
+# num of args = 3 AND (arg1 != -a OR arg2 != -m OR arg3 starts with '-'
+([ $# -eq 3 ] && ([ ! "$2" = "-m" ] || [ ! $1 = "-a" ] || echo "$3" | egrep -q "^-.*"))
+
+then
+    echo "usage: $0 [-a] -m commit-message" >&2
+    exit 1
+fi
+
+# If the -a flag is called
+# Update content of files in index from working directory
+if [ $# -eq 3 ]
+then
+    files=$(ls .legit/.index)
+    for f in $files
+    do
+        for file in *
+        do
+            if [ "$f" = "$file" ]
+            then
+                cp "$file" .legit/.index/"$f"
+            fi
+        done
+    done
+fi
+
+# Find latest commit
+top=$(head -1 .legit/.log/.commits.txt | egrep -o "^[0-9]*")
+# If no commits so far, new commit should be 0
+if [ -z "$top" ]
+then
+    top=0
+# If commits exist, new commit should be one more than latest
+else
+    # Check if anything to commit
+    if diff .legit/.commit$(($top)) .legit/.index > /dev/null
+    then
+        echo "nothing to commit"
+        exit
+    fi
+    top=$(($top+1))
+fi
+
+# Make new commit directory
+mkdir .legit/.commit$top
+
+# Get message
+if [ $# -eq 2 ]
+then
+    msg="$2"
+elif [ $# -eq 3 ]
+then
+    msg="$3"
+fi
+
+# Save files from index into repository
+files=$(ls .legit/.index)
+for f in $files
+do
+    cp .legit/.index/"$f" .legit/.commit$top/"$f"
+done
+
+# Log the commit
+echo "$top $msg" | cat - .legit/.log/.commits.txt > temp && mv temp .legit/.log/.commits.txt
+
+# Print success
+echo "Committed as commit $top"
+

@@ -1,0 +1,31 @@
+#!/bin/dash
+
+# Check if .legit directory exists
+if [ -d ".legit" ]
+then
+    echo "$0: error: .legit already exists"
+    exit 1
+fi
+
+# Check usage
+if [ $# -gt 0 ]
+then
+    echo "usage: $0" >&2
+    exit 1
+fi
+
+# Create .legit directory
+mkdir .legit
+
+# Create .index directory in .legit
+mkdir .legit/.index 
+
+# Create .log directory in .legit
+mkdir .legit/.log
+
+# Create .commits.txt file in .log directory
+touch .legit/.log/.commits.txt
+
+# Print success
+echo "Initialized empty legit repository in .legit"
+
